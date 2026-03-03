@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Tracker - February 2026</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --glass: rgba(255, 255, 255, 0.9);
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --accent-green: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', 'Noto Sans Tamil', sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-main);
+        }
+
+        .controls {
+            max-width: 1100px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            background: var(--secondary);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 20px;
+        }
+
+        header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        header h1 { margin: 0; font-size: 1.8rem; font-weight: 600; }
+
+        .table-container { overflow-x: auto; padding: 20px; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th {
+            padding: 15px 20px;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        tr.staff-row { 
+            background: white;
+        }
+        
+        /* First row of staff group */
+        tr.staff-row.first-of-staff {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        td {
+            padding: 6px 20px;
+            border-left: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            vertical-align: top;
+        }
+        
+        td:first-child {
+            border-left: 1px solid #e2e8f0;
+        }
+        
+        td:last-child {
+            border-right: 1px solid #e2e8f0;
+        }
+
+        /* First row of each staff group */
+        tr.staff-row.first-of-staff td {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+        }
+        
+        tr.staff-row.first-of-staff td:first-child {
+            border-top-left-radius: 12px;
+        }
+        tr.staff-row.first-of-staff td:last-child {
+            border-top-right-radius: 12px;
+        }
+        
+        /* Last row of each staff group */
+        tr.staff-row.last-of-staff td {
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+        
+        tr.staff-row.last-of-staff td:first-child {
+            border-bottom-left-radius: 12px;
+        }
+        tr.staff-row.last-of-staff td:last-child {
+            border-bottom-right-radius: 12px;
+        }
+        
+        /* Add spacing between staff groups */
+        tr.staff-row.last-of-staff {
+            margin-bottom: 12px;
+        }
+        
+        tr.staff-row.last-of-staff::after {
+            content: '';
+            display: block;
+            height: 6px;
+        }
+        
+        /* Continuation rows - seamless connection */
+        tr.staff-row.continuation td {
+            border-top: 1px solid #f8fafc;
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+        
+        /* Spacing between staff groups */
+        tr.staff-row.last-of-staff {
+            position: relative;
+        }
+
+        .staff-badge { font-weight: 700; color: var(--primary); }
+
+        .ticket-no {
+            font-family: monospace;
+            color: #ef4444;
+            font-weight: 600;
+            background: #fef2f2;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 4px;
+            margin-right: 4px;
+        }
+
+        .empty-state {
+            color: #94a3b8;
+            font-style: italic;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <button class="btn" onclick="loadData()" id="refreshBtn">🔄 Refresh Data</button>
+    <button class="btn" onclick="downloadImage()" id="downloadBtn">📸 Download as Image</button>
+</div>
+
+<div class="container" id="captureArea">
+    <header>
+        <h1>Free Video - February 2026</h1>
+    </header>
+
+    <div class="table-container" id="tableContainer">
+        <div class="loading">Loading data from Google Sheets...</div>
+    </div>
+</div>
+
+<script>
+    // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6kzfmXkzKWaP1q-oYawefUuoET2daa4PIwGRdeCON-RvF1nRHdxvBaoGvMByW1g/exec';
+
+    async function loadData() {
+        const container = document.getElementById('tableContainer');
+        const refreshBtn = document.getElementById('refreshBtn');
+        
+        refreshBtn.disabled = true;
+        container.innerHTML = '<div class="loading">Loading data from Google Sheets...</div>';
+
+        try {
+            const response = await fetch(SCRIPT_URL);
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error);
+            }
+
+            renderTable(data);
+        } catch (error) {
+            container.innerHTML = `<div class="error-message">Error loading data: ${error.message}<br>Please check your Google Apps Script URL and permissions.</div>`;
+        } finally {
+            refreshBtn.disabled = false;
+        }
+    }
+
+    function renderTable(data) {
+        // Update header title from sheet B4
+        if (data.title) {
+            document.querySelector('header h1').textContent = data.title;
+            document.title = data.title;
+        }
+
+        const container = document.getElementById('tableContainer');
+        
+        // Use rows array from response
+        const rows = data.rows || data;
+
+        let tableHTML = `
+            <table>
+                <thead>
+                    <tr>
+                        <th>Staff Name</th>
+                        <th>Ticket Details</th>
+                        <th>Decedent Name</th>
+                        <th>Service Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        // Mark first and last rows for each staff member
+        for (let i = 0; i < rows.length; i++) {
+            const current = rows[i];
+            const next = rows[i + 1];
+            
+            current.isLastOfStaff = !next || next.isFirstRow;
+        }
+
+        rows.forEach((row, index) => {
+            let rowClass = 'staff-row';
+            
+            if (row.isFirstRow) {
+                rowClass += ' first-of-staff';
+            } else {
+                rowClass += ' continuation';
+            }
+            
+            if (row.isLastOfStaff) {
+                rowClass += ' last-of-staff';
+            }
+            
+            tableHTML += `<tr class="${rowClass}">`;
+            
+            // Show staff name only on first row for each staff member
+            if (row.isFirstRow) {
+                tableHTML += `<td class="staff-badge">${row.staffName}</td>`;
+            } else {
+                tableHTML += '<td></td>'; // Empty cell for continuation rows
+            }
+
+            // Check if this row is empty (no data for this staff member)
+            if (row.isEmpty) {
+                tableHTML += '<td colspan="3" class="empty-state">no free video of this month</td>';
+            } else {
+                // Show ticket
+                if (row.ticketId) {
+                    tableHTML += `<td><span class="ticket-no">#${row.ticketId}</span></td>`;
+                } else {
+                    tableHTML += '<td></td>';
+                }
+                
+                // Show decedent name
+                tableHTML += `<td>${row.decedentName || ''}</td>`;
+                
+                // Show date
+                tableHTML += `<td>${row.date || ''}</td>`;
+            }
+
+            tableHTML += '</tr>';
+        });
+
+        tableHTML += '</tbody></table>';
+        container.innerHTML = tableHTML;
+    }
+
+    function downloadImage() {
+        const element = document.getElementById('captureArea');
+        html2canvas(element, { 
+            scale: 2,
+            backgroundColor: "#c3cfe2"
+        }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'Free-Video-Tracker-Feb2026.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    // Load data on page load
+    window.addEventListener('DOMContentLoaded', loadData);
+</script>
+
+</body>
+</html>
