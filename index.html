@@ -79,9 +79,40 @@
             padding: 30px;
             text-align: center;
             color: white;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         header h1 { margin: 0; font-size: 1.8rem; font-weight: 600; }
+
+        .record-count {
+            position: absolute;
+            right: 30px;
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 12px;
+            padding: 8px 16px;
+            text-align: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .record-count .count-number {
+            display: block;
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .record-count .count-label {
+            display: block;
+            font-size: 0.7rem;
+            opacity: 0.85;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+        }
 
         .table-container { overflow-x: auto; padding: 20px; }
 
@@ -210,6 +241,10 @@
 <div class="container" id="captureArea">
     <header>
         <h1>Free Video - February 2026</h1>
+        <div class="record-count">
+            <span class="count-number" id="recordCount">—</span>
+            <span class="count-label">Videos</span>
+        </div>
     </header>
 
     <div class="table-container" id="tableContainer">
@@ -255,6 +290,10 @@
         
         // Use rows array from response
         const rows = data.rows || data;
+
+        // Count only rows that have a ticket ID
+        const dataCount = rows.filter(r => r.ticketId).length;
+        document.getElementById('recordCount').textContent = dataCount;
 
         let tableHTML = `
             <table>
