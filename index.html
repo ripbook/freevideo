@@ -3,381 +3,841 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Service Tracker - February 2026</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+    <title>Service Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         :root {
-            --primary: #6366f1;
-            --secondary: #a855f7;
-            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            --glass: rgba(255, 255, 255, 0.9);
+            --navy: #1c3160;
+            --navy-deep: #0f1f4d;
+            --accent: #6d4fe3;
+            --accent-soft: #e4e6fb;
+            --bg: #f1f5fb;
+            --paper: #f7faff;
+            --line: #dbe3f0;
+            --row-alt: #f1f5fc;
             --text-main: #1e293b;
-            --text-muted: #64748b;
-            --accent-green: #10b981;
+            --text-muted: #5b6b8a;
+            --pill-bg: #fde6ea;
+            --pill-text: #e11d48;
+            --green: #10b981;
+            --danger: #ef4444;
         }
+
+        * { box-sizing: border-box; }
 
         body {
             font-family: 'Inter', 'Noto Sans Tamil', sans-serif;
-            background: var(--bg-gradient);
+            background: var(--bg);
             min-height: 100vh;
             margin: 0;
             padding: 20px;
             color: var(--text-main);
         }
 
+        /* ---------- Controls (not part of the downloaded image) ---------- */
         .controls {
             max-width: 1100px;
-            margin: 0 auto 20px auto;
+            margin: 0 auto 18px auto;
             display: flex;
+            flex-wrap: nowrap;          /* one row on desktop */
+            gap: 8px;
             justify-content: space-between;
             align-items: center;
         }
+        .controls .group { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
 
         .btn {
-            background: var(--primary);
+            background: var(--navy);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 12px;
+            padding: 10px 15px;
+            border-radius: 8px;
             font-weight: 600;
+            font-family: inherit;
+            font-size: 0.85rem;
+            white-space: nowrap;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-            transition: all 0.2s;
+            transition: background 0.15s, transform 0.15s;
+        }
+        .btn.close-btn {
+            padding: 0; width: 34px; height: 34px; flex: 0 0 34px;
+            border-radius: 50%; font-size: 0.85rem; line-height: 1;
+        }
+        .btn.close-btn:hover { background: var(--danger); color: white; }
+        .btn:hover { background: var(--accent); transform: translateY(-1px); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn.green { background: var(--accent); }
+        .btn.green:hover { background: #5a3fd0; }
+        .btn.ghost { background: #e2e8f4; color: var(--navy); }
+        .btn.ghost:hover { background: #d3dbec; }
+        .btn.danger { background: var(--danger); }
+        .btn.danger:hover { background: #dc2626; }
+
+        select.month-select {
+            padding: 11px 14px;
+            border-radius: 8px;
+            border: 1px solid #c9d4e6;
+            background: white;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.88rem;
+            color: var(--navy);
+            cursor: pointer;
         }
 
-        .btn:hover {
-            transform: translateY(-2px);
-            background: var(--secondary);
-        }
+        .loading { text-align: center; padding: 40px; color: var(--text-muted); }
 
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-muted);
-        }
-
+        /* ---------- Report (this is what gets downloaded) ---------- */
         .container {
             max-width: 1100px;
             margin: 0 auto;
-            background: var(--glass);
-            backdrop-filter: blur(10px);
-            border-radius: 24px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            background: #f6f9fe;
+            border: 1px solid var(--line);
+            padding-bottom: 28px;
             overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.3);
-            padding-bottom: 20px;
         }
 
         header {
-            background: linear-gradient(to right, var(--primary), var(--secondary));
-            padding: 30px;
-            text-align: center;
+            background: var(--navy);
+            padding: 30px 44px 34px 44px;
             color: white;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        }
+        .title-wrap { position: relative; display: inline-block; padding-bottom: 10px; }
+        header h1 { margin: 0; font-size: 2.1rem; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15; }
+        .title-bar {
+            position: absolute; left: 0; bottom: 0;
+            width: 90px; height: 4px; border-radius: 2px; background: var(--accent);
         }
 
-        header h1 { margin: 0; font-size: 1.8rem; font-weight: 600; }
-
-        .record-count {
-            position: absolute;
-            right: 30px;
-            background: rgba(255,255,255,0.2);
-            border: 1px solid rgba(255,255,255,0.4);
-            border-radius: 12px;
-            padding: 8px 16px;
-            text-align: center;
-            backdrop-filter: blur(4px);
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            padding: 28px 30px 0 30px;
         }
-
-        .record-count .count-number {
-            display: block;
-            font-size: 1.6rem;
-            font-weight: 700;
-            line-height: 1;
+        .stat-card {
+            display: flex; align-items: center; gap: 20px;
+            background: var(--paper);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 22px 24px;
         }
-
-        .record-count .count-label {
-            display: block;
-            font-size: 0.7rem;
-            opacity: 0.85;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-top: 2px;
+        .stat-icon {
+            width: 62px; height: 62px; flex: 0 0 62px;
+            border-radius: 50%;
+            background: var(--accent-soft);
+            color: #5b4de0;
+            display: flex; align-items: center; justify-content: center;
         }
+        .stat-icon svg { width: 30px; height: 30px; display: block; }
+        .stat-label {
+            display: block; font-size: 0.88rem; font-weight: 600;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.02em;
+        }
+        .stat-number { display: block; font-size: 2.6rem; font-weight: 700; color: var(--navy-deep); line-height: 1.1; margin-top: 4px; }
 
-        .table-container { overflow-x: auto; padding: 20px; }
-
+        .table-container { padding: 28px 30px 0 30px; overflow-x: auto; }
+        .table-wrap { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: white; min-width: 640px; }
         table { width: 100%; border-collapse: collapse; }
 
         th {
-            padding: 15px 20px;
+            background: var(--navy);
+            color: white;
+            padding: 16px 26px;
             text-align: left;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            color: var(--text-muted);
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            border-right: 1px solid rgba(255,255,255,0.12);
         }
-
-        tr.staff-row { 
-            background: white;
-        }
-        
-        /* First row of staff group */
-        tr.staff-row.first-of-staff {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        }
+        th:last-child { border-right: none; }
 
         td {
-            padding: 6px 20px;
-            border-left: 1px solid #e2e8f0;
-            border-right: 1px solid #e2e8f0;
-            vertical-align: top;
+            padding: 12px 26px;
+            font-size: 1rem;
+            vertical-align: middle;
+            border-bottom: 1px solid #e6ecf6;
+            border-right: 1px solid #dfe6f2;
+            background: white;
         }
-        
-        td:first-child {
-            border-left: 1px solid #e2e8f0;
-        }
-        
-        td:last-child {
-            border-right: 1px solid #e2e8f0;
-        }
+        td:last-child { border-right: none; }
+        tr.alt td { background: var(--row-alt); }
+        tbody tr:last-child td { border-bottom: none; }
 
-        /* First row of each staff group */
-        tr.staff-row.first-of-staff td {
-            border-top: 1px solid #e2e8f0;
-            padding-top: 10px;
-        }
-        
-        tr.staff-row.first-of-staff td:first-child {
-            border-top-left-radius: 12px;
-        }
-        tr.staff-row.first-of-staff td:last-child {
-            border-top-right-radius: 12px;
-        }
-        
-        /* Last row of each staff group */
-        tr.staff-row.last-of-staff td {
-            border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 10px;
-        }
-        
-        tr.staff-row.last-of-staff td:first-child {
-            border-bottom-left-radius: 12px;
-        }
-        tr.staff-row.last-of-staff td:last-child {
-            border-bottom-right-radius: 12px;
-        }
-        
-        /* Add spacing between staff groups */
-        tr.staff-row.last-of-staff {
-            margin-bottom: 12px;
-        }
-        
-        tr.staff-row.last-of-staff::after {
-            content: '';
-            display: block;
-            height: 6px;
-        }
-        
-        /* Continuation rows - seamless connection */
-        tr.staff-row.continuation td {
-            border-top: 1px solid #f8fafc;
-            padding-top: 4px;
-            padding-bottom: 4px;
-        }
-        
-        /* Spacing between staff groups */
-        tr.staff-row.last-of-staff {
-            position: relative;
-        }
-
-        .staff-badge { font-weight: 700; color: var(--primary); }
+        .staff-badge { font-weight: 700; color: var(--accent); }
 
         .ticket-no {
-            font-family: monospace;
-            color: #ef4444;
-            font-weight: 600;
-            background: #fef2f2;
-            padding: 4px 8px;
+            font-weight: 700;
+            color: var(--pill-text);
+            background: var(--pill-bg);
+            padding: 4px 12px;
             border-radius: 6px;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             display: inline-block;
-            margin-bottom: 4px;
-            margin-right: 4px;
         }
 
-        .empty-state {
-            color: #94a3b8;
-            font-style: italic;
-            font-size: 0.9rem;
-            text-align: center;
+        .empty-state { color: #8a97b4; font-style: italic; font-size: 0.92rem; text-align: center; }
+
+        .actions { white-space: nowrap; width: 1%; }
+        .icon-btn {
+            border: none; background: #e9edfb; color: var(--accent);
+            border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 0.78rem;
+            font-weight: 600; font-family: inherit; margin-right: 4px;
         }
+        .icon-btn:hover { background: #dbe1f8; }
+        .icon-btn.del { background: #fdecef; color: var(--danger); }
+        .icon-btn.del:hover { background: #fbd9df; }
 
         .error-message {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px;
-            text-align: center;
+            background: #fee2e2; color: #991b1b; padding: 15px;
+            border-radius: 8px; margin: 20px; text-align: center;
+        }
+
+        /* ---------- Modals ---------- */
+        .overlay {
+            position: fixed; inset: 0; background: rgba(15,31,77,0.5);
+            display: none; align-items: center; justify-content: center;
+            padding: 20px; z-index: 100;
+        }
+        .overlay.show { display: flex; }
+        .modal {
+            background: white; border-radius: 14px; padding: 26px;
+            width: 100%; max-width: 440px; box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+        }
+        .modal h2 { margin: 0 0 4px 0; font-size: 1.2rem; color: var(--navy); }
+        .modal p.sub { margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.85rem; }
+        .field { margin-bottom: 12px; }
+        .field label { display: block; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .field input, .field select {
+            width: 100%; padding: 11px 12px; border: 1px solid #c9d4e6; border-radius: 8px;
+            font-family: inherit; font-size: 0.95rem; background: white; color: var(--text-main);
+        }
+        .field input:focus, .field select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+        .modal-error { color: #991b1b; background: #fee2e2; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; margin-top: 10px; display: none; }
+        .inline-row { display: flex; gap: 8px; }
+        .inline-row select { flex: 1; }
+
+        @media (max-width: 1000px) {
+            .controls, .controls .group { flex-wrap: wrap; }
+        }
+
+        @media (max-width: 800px) {
+            .stats { grid-template-columns: 1fr; padding: 20px 16px 0 16px; }
+            .table-container { padding: 20px 16px 0 16px; }
+            header { padding: 22px 20px 26px 20px; }
+            header h1 { font-size: 1.5rem; }
+            td, th { padding-left: 14px; padding-right: 14px; }
         }
     </style>
 </head>
 <body>
 
 <div class="controls">
-    <button class="btn" onclick="loadData()" id="refreshBtn">🔄 Refresh Data</button>
-    <button class="btn" onclick="downloadImage()" id="downloadBtn">📸 Download as Image</button>
+    <div class="group">
+        <select class="month-select" id="monthSelect" onchange="onMonthChange()"></select>
+        <button class="btn" onclick="loadData()" id="refreshBtn">🔄 Refresh</button>
+        <button class="btn green" onclick="openEntryModal()" id="addBtn">➕ Add Entry</button>
+    </div>
+    <div class="group">
+        <button class="btn ghost" onclick="createNextMonth()" id="nextMonthBtn">📅 Create Next Month</button>
+        <button class="btn ghost" onclick="toggleLock()" id="lockBtn">🔒 Editing locked</button>
+        <button class="btn" onclick="downloadImage()" id="downloadBtn">📸 Download as Image</button>
+        <button class="btn ghost close-btn" onclick="logout()" id="logoutBtn" title="Logout" aria-label="Logout">✕</button>
+    </div>
 </div>
 
 <div class="container" id="captureArea">
     <header>
-        <h1>Free Video - February 2026</h1>
-        <div class="record-count">
-            <span class="count-number" id="recordCount">—</span>
-            <span class="count-label">Videos</span>
+        <div class="title-wrap">
+            <h1 id="pageTitle">Free Video</h1>
+            <span class="title-bar"></span>
         </div>
     </header>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3.5" fill="currentColor"/><path d="M10 8l6 4-6 4z" fill="#e4e6fb"/></svg>
+            </div>
+            <div>
+                <span class="stat-label">Total Videos</span>
+                <span class="stat-number" id="statTotal">—</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.3" fill="currentColor"/><path d="M2.5 19.5c0-3.7 2.9-6.2 6.5-6.2s6.5 2.5 6.5 6.2z" fill="currentColor"/><circle cx="17" cy="9" r="2.6" fill="currentColor" opacity=".75"/><path d="M16.4 13.4c3 .1 5.1 2 5.1 5.1h-4.3c0-1.9-.3-3.5-.8-5.1z" fill="currentColor" opacity=".75"/></svg>
+            </div>
+            <div>
+                <span class="stat-label">Staff</span>
+                <span class="stat-number" id="statStaff">—</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>
+            </div>
+            <div>
+                <span class="stat-label">No Free Video</span>
+                <span class="stat-number" id="statNone">—</span>
+            </div>
+        </div>
+    </div>
 
     <div class="table-container" id="tableContainer">
         <div class="loading">Loading data from Google Sheets...</div>
     </div>
 </div>
 
+<!-- Login screen (Password 1): covers the whole page until unlocked -->
+<div class="overlay" id="loginOverlay" style="background:#0f1f4d; z-index:200;">
+    <div class="modal">
+        <h2>Free Video Tracker</h2>
+        <p class="sub">Enter the password to open this page. Asked only once on this computer.</p>
+        <div class="field">
+            <label>Password</label>
+            <input id="loginPass" type="password" autocomplete="off">
+        </div>
+        <div class="modal-error" id="loginError"></div>
+        <div class="modal-actions">
+            <button class="btn" id="loginBtn" onclick="doLogin()">Open</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add / Edit modal -->
+<div class="overlay" id="entryOverlay">
+    <div class="modal">
+        <h2 id="entryTitle">Add Entry</h2>
+        <p class="sub" id="entryMonthLabel"></p>
+
+        <div class="field">
+            <label>Staff Name</label>
+            <div class="inline-row">
+                <select id="fStaff"></select>
+                <button class="btn ghost" type="button" onclick="addStaffPrompt()" style="padding:10px 14px;">+ New</button>
+            </div>
+        </div>
+        <div class="field">
+            <label>Ticket ID</label>
+            <input id="fTicket" type="text" placeholder="e.g. 10234">
+        </div>
+        <div class="field">
+            <label>Decedent Name</label>
+            <input id="fName" type="text">
+        </div>
+        <div class="field">
+            <label>Service Date</label>
+            <input id="fDate" type="date">
+        </div>
+        <div class="modal-error" id="entryError"></div>
+        <div class="modal-actions">
+            <button class="btn ghost" onclick="closeModals()">Cancel</button>
+            <button class="btn" id="entrySaveBtn" onclick="saveEntry()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Password / confirm modal (unlock / delete / create month / new staff) -->
+<div class="overlay" id="passOverlay">
+    <div class="modal">
+        <h2 id="passTitle">Enter password</h2>
+        <p class="sub" id="passSub"></p>
+        <div class="field" id="passExtraField" style="display:none;">
+            <label id="passExtraLabel"></label>
+            <input id="passExtra" type="text">
+        </div>
+        <div class="field" id="passField">
+            <label>Password</label>
+            <input id="pPass" type="password" autocomplete="off">
+        </div>
+        <div class="modal-error" id="passError"></div>
+        <div class="modal-actions">
+            <button class="btn ghost" onclick="closeModals()">Cancel</button>
+            <button class="btn" id="passOkBtn">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // REPLACE THIS WITH YOUR GOOGLE APPS SCRIPT WEB APP URL
-    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6kzfmXkzKWaP1q-oYawefUuoET2daa4PIwGRdeCON-RvF1nRHdxvBaoGvMByW1g/exec';
+    // Your Google Apps Script Web App URL (same URL after you redeploy as "New version")
+    const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_6yoi1pKdrNzjOJhgWHqnMfVruoW4YnKS4cloDy8frc9tt74eexRYWTDTqRXW5bE/exec';
+
+    let months = [];          // [{key,label}]
+    let currentMonth = '';    // 'YYYY-MM'
+    let monthData = null;     // last loaded data
+    let editingRow = null;    // sheet row number when editing, null when adding
+    let passAction = null;    // function(password) for the password-only modal
+
+    const $ = id => document.getElementById(id);
+
+    /* ---------- Two passwords, each asked once per computer ----------
+       Password 1 (view)  : needed to open the page
+       Password 2 (edit)  : needed to add / edit / delete / create a month  */
+
+    const VIEW_KEY = 'service_tracker_view_pw';
+    const EDIT_KEY = 'service_tracker_edit_pw';
+    function lsGet(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+    function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+    const getViewPw = () => lsGet(VIEW_KEY);
+    const getEditPw = () => lsGet(EDIT_KEY);
+
+    function updateLockUI() {
+        const unlocked = !!getEditPw();
+        const btn = $('lockBtn');
+        btn.textContent = unlocked ? '🔓 Editing unlocked' : '🔒 Editing locked';
+        btn.title = unlocked ? 'Click to lock editing on this computer' : 'Click to enter the edit password';
+    }
+
+    function toggleLock() {
+        if (getEditPw()) { lsDel(EDIT_KEY); updateLockUI(); }
+        else openEditUnlock(null);
+    }
+
+    function logout() {
+        lsDel(VIEW_KEY);
+        lsDel(EDIT_KEY);
+        location.reload();
+    }
+
+    // Runs fn now if editing is unlocked on this computer, otherwise asks for Password 2 first
+    function requireAuth(fn) {
+        if (getEditPw()) fn();
+        else openEditUnlock(fn);
+    }
+
+    function openEditUnlock(then) {
+        askPassword({
+            title: 'Edit password',
+            sub: 'Needed to add or edit entries. Asked only once on this computer.',
+            okText: 'Unlock editing',
+            onOk: async (pw) => {
+                await apiPost({ action: 'verifyEdit', editPassword: pw });
+                lsSet(EDIT_KEY, pw);
+                updateLockUI();
+                closeModals();
+                if (then) then();
+            }
+        });
+        $('passOkBtn').classList.remove('danger');
+    }
+
+    /* ---------- Login screen (Password 1) ---------- */
+
+    function showLogin(msg) {
+        $('loginOverlay').classList.add('show');
+        $('loginPass').value = '';
+        showErr('loginError', msg || '');
+        setTimeout(() => $('loginPass').focus(), 50);
+    }
+
+    async function doLogin() {
+        const pw = $('loginPass').value;
+        if (!pw) return showErr('loginError', 'Password is required');
+        const btn = $('loginBtn');
+        btn.disabled = true;
+        showErr('loginError', '');
+        try {
+            await apiPost({ action: 'verifyView', viewPassword: pw });
+            lsSet(VIEW_KEY, pw);
+            $('loginOverlay').classList.remove('show');
+            await startApp();
+        } catch (err) {
+            showErr('loginError', err.message);
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    function esc(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    /* ---------- API ---------- */
+
+    // Reading data also goes through POST so the password is never put in the URL
+    function apiRead(action, extra) {
+        return apiPost(Object.assign({ action, viewPassword: getViewPw() }, extra || {}));
+    }
+
+    async function apiPost(payload) {
+        // text/plain avoids the CORS preflight that Apps Script cannot answer
+        const res = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.error) {
+            if (data.error === 'Wrong password' && payload.action !== 'verifyView') {
+                lsDel(VIEW_KEY);      // saved view password is no longer valid
+                showLogin('The password was changed. Please enter it again.');
+            }
+            if (data.error === 'Wrong edit password' && payload.action !== 'verifyEdit') {
+                lsDel(EDIT_KEY);      // saved edit password is no longer valid
+                updateLockUI();
+            }
+            throw new Error(data.error);
+        }
+        return data;
+    }
+
+    /* ---------- Loading ---------- */
+
+    async function loadMonths(selectKey) {
+        const info = await apiRead('months');
+        months = info.months || [];
+        const sel = $('monthSelect');
+        sel.innerHTML = months.map(m => `<option value="${esc(m.key)}">${esc(m.label)}</option>`).join('');
+
+        if (selectKey && months.some(m => m.key === selectKey)) {
+            currentMonth = selectKey;
+        } else if (!currentMonth || !months.some(m => m.key === currentMonth)) {
+            const cur = info.current;
+            currentMonth = months.some(m => m.key === cur) ? cur : (months.length ? months[months.length - 1].key : '');
+        }
+        sel.value = currentMonth;
+    }
+
+    function onMonthChange() {
+        currentMonth = $('monthSelect').value;
+        loadData();
+    }
 
     async function loadData() {
-        const container = document.getElementById('tableContainer');
-        const refreshBtn = document.getElementById('refreshBtn');
-        
+        const container = $('tableContainer');
+        const refreshBtn = $('refreshBtn');
         refreshBtn.disabled = true;
         container.innerHTML = '<div class="loading">Loading data from Google Sheets...</div>';
 
         try {
-            const response = await fetch(SCRIPT_URL);
-            const data = await response.json();
-
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            renderTable(data);
+            if (!months.length) await loadMonths();
+            if (!currentMonth) throw new Error('No month sheets found. Run setupYear2026() in Apps Script first.');
+            monthData = await apiRead('data', { month: currentMonth });
+            renderTable(monthData);
         } catch (error) {
-            container.innerHTML = `<div class="error-message">Error loading data: ${error.message}<br>Please check your Google Apps Script URL and permissions.</div>`;
+            container.innerHTML = `<div class="error-message">Error loading data: ${esc(error.message)}<br>Please check your Google Apps Script URL and permissions.</div>`;
         } finally {
             refreshBtn.disabled = false;
         }
     }
 
+    /* ---------- Rendering ---------- */
+
     function renderTable(data) {
-        // Update header title from sheet B4
-        if (data.title) {
-            document.querySelector('header h1').textContent = data.title;
-            document.title = data.title;
-        }
+        const title = String(data.title || 'Free Video').replace(' - ', ' — ');
+        $('pageTitle').textContent = title;
+        document.title = title;
 
-        const container = document.getElementById('tableContainer');
-        
-        // Use rows array from response
-        const rows = data.rows || data;
+        const entries = data.entries || [];
 
-        // Count only rows that have a ticket ID
-        const dataCount = rows.filter(r => r.ticketId).length;
-        document.getElementById('recordCount').textContent = dataCount;
+        // Group entries by staff, keeping Staff-sheet order; unknown names go last
+        const groups = new Map();
+        (data.staff || []).forEach(n => groups.set(n, []));
+        entries.forEach(e => {
+            if (!groups.has(e.staffName)) groups.set(e.staffName, []);
+            groups.get(e.staffName).push(e);
+        });
 
-        let tableHTML = `
+        let noFree = 0;
+        groups.forEach(list => { if (list.length === 0) noFree++; });
+
+        $('statTotal').textContent = entries.filter(e => e.ticketId).length;
+        $('statStaff').textContent = groups.size;
+        $('statNone').textContent = noFree;
+
+        let html = `
+            <div class="table-wrap">
             <table>
                 <thead>
                     <tr>
-                        <th>Staff Name</th>
-                        <th>Ticket Details</th>
+                        <th style="width:21%">Staff Name</th>
+                        <th style="width:19%">Ticket Details</th>
                         <th>Decedent Name</th>
-                        <th>Service Date</th>
+                        <th style="width:18%">Service Date</th>
+                        <th class="no-capture"></th>
                     </tr>
                 </thead>
-                <tbody>
-        `;
+                <tbody>`;
 
-        // Mark first and last rows for each staff member
-        for (let i = 0; i < rows.length; i++) {
-            const current = rows[i];
-            const next = rows[i + 1];
-            
-            current.isLastOfStaff = !next || next.isFirstRow;
+        let gi = 0;
+        groups.forEach((list, staffName) => {
+            const alt = gi % 2 === 1 ? ' alt' : '';
+            gi++;
+            if (list.length === 0) {
+                html += `<tr class="staff-row${alt}">
+                    <td class="staff-badge">${esc(staffName)}</td>
+                    <td colspan="3" class="empty-state">no free video of this month</td>
+                    <td class="actions no-capture"></td>
+                </tr>`;
+            } else {
+                list.forEach((e, i) => {
+                    html += `<tr class="staff-row${alt}">
+                        <td class="staff-badge">${i === 0 ? esc(staffName) : ''}</td>
+                        <td>${e.ticketId ? `<span class="ticket-no">#${esc(e.ticketId)}</span>` : ''}</td>
+                        <td>${esc(e.decedentName)}</td>
+                        <td>${esc(e.date)}</td>
+                        <td class="actions no-capture">
+                            <button class="icon-btn" onclick="openEntryModal(${e.row})">Edit</button>
+                            <button class="icon-btn del" onclick="deletePrompt(${e.row})">Delete</button>
+                        </td>
+                    </tr>`;
+                });
+            }
+        });
+
+        html += '</tbody></table></div>';
+        $('tableContainer').innerHTML = html;
+    }
+
+    /* ---------- Modals ---------- */
+
+    function closeModals() {
+        $('entryOverlay').classList.remove('show');
+        $('passOverlay').classList.remove('show');
+    }
+
+    function showErr(id, msg) {
+        const el = $(id);
+        el.textContent = msg;
+        el.style.display = msg ? 'block' : 'none';
+    }
+
+    function fillStaffSelect(selected) {
+        const names = (monthData && monthData.staff) ? monthData.staff.slice() : [];
+        if (selected && !names.includes(selected)) names.push(selected);
+        $('fStaff').innerHTML = names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+        if (selected) $('fStaff').value = selected;
+    }
+
+    function openEntryModal(row) {
+        requireAuth(() => openEntryForm(row));
+    }
+
+    function openEntryForm(row) {
+        if (!monthData) return;
+        editingRow = row || null;
+        showErr('entryError', '');
+
+        if (editingRow) {
+            const e = monthData.entries.find(x => x.row === editingRow);
+            if (!e) return;
+            $('entryTitle').textContent = 'Edit Entry';
+            fillStaffSelect(e.staffName);
+            $('fTicket').value = e.ticketId;
+            $('fName').value = e.decedentName;
+            $('fDate').value = e.date;
+        } else {
+            $('entryTitle').textContent = 'Add Entry';
+            fillStaffSelect();
+            $('fTicket').value = '';
+            $('fName').value = '';
+            $('fDate').value = new Date().toISOString().slice(0, 10);
+        }
+        const m = months.find(x => x.key === currentMonth);
+        $('entryMonthLabel').textContent = m ? m.label : '';
+        $('entryOverlay').classList.add('show');
+        setTimeout(() => $('fTicket').focus(), 50);
+    }
+
+    async function saveEntry() {
+        const btn = $('entrySaveBtn');
+        const payload = {
+            action: editingRow ? 'update' : 'add',
+            editPassword: getEditPw(),
+            month: currentMonth,
+            row: editingRow,
+            staffName: $('fStaff').value,
+            ticketId: $('fTicket').value.trim(),
+            decedentName: $('fName').value.trim(),
+            date: $('fDate').value
+        };
+        if (!payload.editPassword) { closeModals(); return openEditUnlock(() => openEntryForm(editingRow)); }
+        if (!payload.staffName) return showErr('entryError', 'Select a staff name');
+        if (!payload.ticketId) return showErr('entryError', 'Ticket ID is required');
+        if (!payload.date) return showErr('entryError', 'Service date is required');
+
+        btn.disabled = true; btn.textContent = 'Saving...';
+        showErr('entryError', '');
+        try {
+            await apiPost(payload);
+            closeModals();
+            await loadData();
+        } catch (err) {
+            showErr('entryError', err.message === 'Wrong edit password'
+                ? 'The edit password was changed. Close this and enter it again.'
+                : err.message);
+        } finally {
+            btn.disabled = false; btn.textContent = 'Save';
+        }
+    }
+
+    // Generic password / confirm modal
+    function askPassword({ title, sub, extraLabel, extraValue, okText, onOk, hidePassword }) {
+        $('passTitle').textContent = title;
+        $('passSub').textContent = sub || '';
+        $('passField').style.display = hidePassword ? 'none' : 'block';
+        $('pPass').value = '';
+        showErr('passError', '');
+        $('passOkBtn').textContent = okText || 'Confirm';
+        $('passOkBtn').disabled = false;
+
+        const extra = $('passExtraField');
+        if (extraLabel) {
+            extra.style.display = 'block';
+            $('passExtraLabel').textContent = extraLabel;
+            $('passExtra').value = extraValue || '';
+        } else {
+            extra.style.display = 'none';
         }
 
-        rows.forEach((row, index) => {
-            let rowClass = 'staff-row';
-            
-            if (row.isFirstRow) {
-                rowClass += ' first-of-staff';
-            } else {
-                rowClass += ' continuation';
+        passAction = onOk;
+        $('passOkBtn').onclick = async () => {
+            const pw = hidePassword ? getEditPw() : $('pPass').value;
+            if (!pw) return showErr('passError', 'Password is required');
+            const btn = $('passOkBtn');
+            btn.disabled = true;
+            showErr('passError', '');
+            try {
+                await passAction(pw, $('passExtra').value.trim());
+            } catch (err) {
+                showErr('passError', err.message);
+                btn.disabled = false;
             }
-            
-            if (row.isLastOfStaff) {
-                rowClass += ' last-of-staff';
-            }
-            
-            tableHTML += `<tr class="${rowClass}">`;
-            
-            // Show staff name only on first row for each staff member
-            if (row.isFirstRow) {
-                tableHTML += `<td class="staff-badge">${row.staffName}</td>`;
-            } else {
-                tableHTML += '<td></td>'; // Empty cell for continuation rows
-            }
+        };
+        $('passOverlay').classList.add('show');
+        setTimeout(() => (extraLabel ? $('passExtra') : $('pPass')).focus(), 50);
+        if (hidePassword && !extraLabel) setTimeout(() => $('passOkBtn').focus(), 60);
+    }
 
-            // Check if this row is empty (no data for this staff member)
-            if (row.isEmpty) {
-                tableHTML += '<td colspan="3" class="empty-state">no free video of this month</td>';
-            } else {
-                // Show ticket
-                if (row.ticketId) {
-                    tableHTML += `<td><span class="ticket-no">#${row.ticketId}</span></td>`;
-                } else {
-                    tableHTML += '<td></td>';
+    function deletePrompt(row) {
+        requireAuth(() => deleteConfirm(row));
+    }
+
+    function deleteConfirm(row) {
+        const e = monthData.entries.find(x => x.row === row);
+        askPassword({
+            title: 'Delete entry',
+            sub: e ? `Delete #${e.ticketId} (${e.decedentName || 'no name'})? This cannot be undone.` : 'Delete this entry?',
+            okText: 'Delete',
+            hidePassword: true,
+            onOk: async (pw) => {
+                await apiPost({ action: 'delete', editPassword: pw, month: currentMonth, row });
+                closeModals();
+                await loadData();
+            }
+        });
+        $('passOkBtn').classList.add('danger');
+    }
+
+    function createNextMonth() {
+        requireAuth(createNextMonthConfirm);
+    }
+
+    function createNextMonthConfirm() {
+        const last = months.length ? months[months.length - 1].label : 'the first month';
+        askPassword({
+            title: 'Create next month',
+            sub: `A new sheet will be added after ${last}.`,
+            okText: 'Create',
+            hidePassword: true,
+            onOk: async (pw) => {
+                const res = await apiPost({ action: 'createNextMonth', editPassword: pw });
+                closeModals();
+                await loadMonths(res.month);
+                await loadData();
+            }
+        });
+        $('passOkBtn').classList.remove('danger');
+    }
+
+    function addStaffPrompt() {
+        // Opened on top of the entry modal; the confirm modal sits above it
+        askPassword({
+            title: 'Add new staff',
+            sub: 'The name is saved in the "Staff" sheet.',
+            extraLabel: 'Staff Name',
+            okText: 'Add Staff',
+            hidePassword: true,
+            onOk: async (pw, name) => {
+                if (!name) throw new Error('Staff name is required');
+                await apiPost({ action: 'addStaff', editPassword: pw, staffName: name });
+                monthData.staff.push(name);
+                $('passOverlay').classList.remove('show');
+                fillStaffSelect(name);
+            }
+        });
+        $('passOkBtn').classList.remove('danger');
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeModals();
+        if (e.key === 'Enter') {
+            if ($('loginOverlay').classList.contains('show')) doLogin();
+            else if ($('passOverlay').classList.contains('show')) $('passOkBtn').click();
+            else if ($('entryOverlay').classList.contains('show')) saveEntry();
+        }
+    });
+
+    /* ---------- Download as image: header + stat cards + table, no buttons ---------- */
+
+    async function downloadImage() {
+        const btn = $('downloadBtn');
+        const element = $('captureArea');
+        const label = (months.find(m => m.key === currentMonth) || {}).label || 'Month';
+
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = '⏳ Preparing...';
+        try {
+            if (document.fonts && document.fonts.ready) await document.fonts.ready;
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                backgroundColor: '#f6f9fe',
+                windowWidth: 1200,
+                onclone: doc => {
+                    doc.querySelectorAll('.no-capture').forEach(el => el.style.display = 'none');
+                    const c = doc.getElementById('captureArea');
+                    c.style.width = '1100px';
+                    c.style.maxWidth = 'none';
+                    c.style.border = 'none';
                 }
-                
-                // Show decedent name
-                tableHTML += `<td>${row.decedentName || ''}</td>`;
-                
-                // Show date
-                tableHTML += `<td>${row.date || ''}</td>`;
-            }
-
-            tableHTML += '</tr>';
-        });
-
-        tableHTML += '</tbody></table>';
-        container.innerHTML = tableHTML;
-    }
-
-    function downloadImage() {
-        const element = document.getElementById('captureArea');
-        html2canvas(element, { 
-            scale: 2,
-            backgroundColor: "#c3cfe2"
-        }).then(canvas => {
+            });
             const link = document.createElement('a');
-            link.download = 'Free-Video-Tracker.png';
-            link.href = canvas.toDataURL();
+            link.download = 'Free-Video-' + label.replace(/\s+/g, '-') + '.png';
+            link.href = canvas.toDataURL('image/png');
             link.click();
-        });
+        } catch (err) {
+            alert('Could not create the image: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = oldText;
+        }
     }
 
-    // Load data on page load
-    window.addEventListener('DOMContentLoaded', loadData);
+    // Load on page open
+    async function startApp() {
+        updateLockUI();
+        try {
+            await loadMonths();
+        } catch (error) {
+            $('tableContainer').innerHTML = `<div class="error-message">Error loading data: ${esc(error.message)}<br>Please check your Google Apps Script URL and permissions.</div>`;
+            return;
+        }
+        loadData();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        updateLockUI();
+        // Password 1 is asked once per computer; the page stays hidden until then
+        if (!getViewPw()) showLogin();
+        else startApp();
+    });
 </script>
 
 </body>
