@@ -178,6 +178,10 @@
             display: inline-block;
         }
 
+        .status-pill { font-weight: 700; font-size: 0.82rem; padding: 4px 12px; border-radius: 6px; display: inline-block; }
+        .status-pill.pending { background: #fff3d6; color: #b45309; }
+        .status-pill.done { background: #d9f7ea; color: #047857; }
+
         .empty-state { color: #8a97b4; font-style: italic; font-size: 0.92rem; text-align: center; }
 
         .actions { white-space: nowrap; width: 1%; }
@@ -272,7 +276,7 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.3" fill="currentColor"/><path d="M2.5 19.5c0-3.7 2.9-6.2 6.5-6.2s6.5 2.5 6.5 6.2z" fill="currentColor"/><circle cx="17" cy="9" r="2.6" fill="currentColor" opacity=".75"/><path d="M16.4 13.4c3 .1 5.1 2 5.1 5.1h-4.3c0-1.9-.3-3.5-.8-5.1z" fill="currentColor" opacity=".75"/></svg>
             </div>
             <div>
-                <span class="stat-label">Staff</span>
+                <span class="stat-label">Total Staff</span>
                 <span class="stat-number" id="statStaff">—</span>
             </div>
         </div>
@@ -281,7 +285,7 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>
             </div>
             <div>
-                <span class="stat-label">No Free Video</span>
+                <span class="stat-label">Staff Yet to Use Free Video</span>
                 <span class="stat-number" id="statNone">—</span>
             </div>
         </div>
@@ -332,6 +336,13 @@
         <div class="field">
             <label>Service Date</label>
             <input id="fDate" type="date">
+        </div>
+        <div class="field">
+            <label>Status</label>
+            <select id="fStatus">
+                <option value="Pending">Pending</option>
+                <option value="Done">Done</option>
+            </select>
         </div>
         <div class="modal-error" id="entryError"></div>
         <div class="modal-actions">
@@ -556,10 +567,11 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width:21%">Staff Name</th>
-                        <th style="width:19%">Ticket Details</th>
+                        <th style="width:19%">Staff Name</th>
+                        <th style="width:17%">Ticket Details</th>
                         <th>Decedent Name</th>
-                        <th style="width:18%">Service Date</th>
+                        <th style="width:15%">Service Date</th>
+                        <th style="width:12%">Status</th>
                         <th class="no-capture"></th>
                     </tr>
                 </thead>
@@ -572,16 +584,18 @@
             if (list.length === 0) {
                 html += `<tr class="staff-row${alt}">
                     <td class="staff-badge">${esc(staffName)}</td>
-                    <td colspan="3" class="empty-state">no free video of this month</td>
+                    <td colspan="4" class="empty-state">no free video of this month</td>
                     <td class="actions no-capture"></td>
                 </tr>`;
             } else {
                 list.forEach((e, i) => {
+                    const st = e.status === 'Done' ? 'Done' : 'Pending';
                     html += `<tr class="staff-row${alt}">
                         <td class="staff-badge">${i === 0 ? esc(staffName) : ''}</td>
                         <td>${e.ticketId ? `<span class="ticket-no">#${esc(e.ticketId)}</span>` : ''}</td>
                         <td>${esc(e.decedentName)}</td>
                         <td>${esc(e.date)}</td>
+                        <td><span class="status-pill ${st === 'Done' ? 'done' : 'pending'}">${st}</span></td>
                         <td class="actions no-capture">
                             <button class="icon-btn" onclick="openEntryModal(${e.row})">Edit</button>
                             <button class="icon-btn del" onclick="deletePrompt(${e.row})">Delete</button>
@@ -632,12 +646,14 @@
             $('fTicket').value = e.ticketId;
             $('fName').value = e.decedentName;
             $('fDate').value = e.date;
+            $('fStatus').value = e.status === 'Done' ? 'Done' : 'Pending';
         } else {
             $('entryTitle').textContent = 'Add Entry';
             fillStaffSelect();
             $('fTicket').value = '';
             $('fName').value = '';
             $('fDate').value = new Date().toISOString().slice(0, 10);
+            $('fStatus').value = 'Pending';
         }
         const m = months.find(x => x.key === currentMonth);
         $('entryMonthLabel').textContent = m ? m.label : '';
@@ -655,7 +671,8 @@
             staffName: $('fStaff').value,
             ticketId: $('fTicket').value.trim(),
             decedentName: $('fName').value.trim(),
-            date: $('fDate').value
+            date: $('fDate').value,
+            status: $('fStatus').value
         };
         if (!payload.editPassword) { closeModals(); return openEditUnlock(() => openEntryForm(editingRow)); }
         if (!payload.staffName) return showErr('entryError', 'Select a staff name');
