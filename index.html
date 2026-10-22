@@ -60,6 +60,8 @@
             cursor: pointer;
             transition: background 0.15s, transform 0.15s;
         }
+        .btn.small { padding: 10px 11px; font-size: 0.8rem; }
+        .btn-split { display: flex; gap: 4px; }
         .btn.close-btn {
             padding: 0; width: 34px; height: 34px; flex: 0 0 34px;
             border-radius: 50%; font-size: 0.85rem; line-height: 1;
@@ -209,6 +211,7 @@
         .modal {
             background: white; border-radius: 14px; padding: 26px;
             width: 100%; max-width: 440px; box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            max-height: 100%; overflow-y: auto;
         }
         .modal h2 { margin: 0 0 4px 0; font-size: 1.2rem; color: var(--navy); }
         .modal p.sub { margin: 0 0 16px 0; color: var(--text-muted); font-size: 0.85rem; }
@@ -223,6 +226,45 @@
         .modal-error { color: #991b1b; background: #fee2e2; padding: 8px 12px; border-radius: 8px; font-size: 0.85rem; margin-top: 10px; display: none; }
         .inline-row { display: flex; gap: 8px; }
         .inline-row select { flex: 1; }
+
+        /* ---------- Summary dashboard ---------- */
+        .summary-result {
+            background: var(--accent-soft);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .summary-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+        .summary-total { font-size: 2.4rem; font-weight: 700; color: var(--navy-deep); line-height: 1.1; margin-top: 2px; }
+
+
+        .modal.wide { max-width: 520px; }
+        .summary-staff-wrap { max-height: 230px; overflow-y: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; }
+        .summary-staff { width: 100%; border-collapse: collapse; }
+        .summary-staff th { position: sticky; top: 0; padding: 8px 12px; font-size: 0.7rem; }
+        .summary-staff td { padding: 7px 12px; font-size: 0.85rem; }
+        .summary-staff th.n, .summary-staff td.n { text-align: center; width: 70px; }
+        .summary-staff tr.zero td { color: #9aa7c2; }
+        .summary-staff td.nu { font-size: 0.78rem; color: var(--text-muted); }
+        .sr-table td.nu { font-size: 0.9rem; color: var(--text-muted); }
+        .x-btn { border: none; background: #fdecef; color: var(--danger); border-radius: 50%; width: 20px; height: 20px; padding: 0; font-size: 0.65rem; line-height: 1; cursor: pointer; }
+        .x-btn:hover { background: var(--danger); color: white; }
+
+        /* Off-screen report that gets downloaded from the Summary dashboard */
+        #summaryReport { position: absolute; left: -10000px; top: 0; width: 760px; background: #f6f9fe; font-family: 'Inter', 'Noto Sans Tamil', sans-serif; color: var(--text-main); }
+        .sr-head { background: var(--navy); color: #fff; padding: 26px 30px 28px 30px; }
+        .sr-head h3 { margin: 0; font-size: 1.6rem; font-weight: 700; }
+        .sr-head p { margin: 8px 0 0 0; font-size: 1rem; opacity: 0.85; }
+        .sr-stats { display: grid; grid-template-columns: 260px; gap: 14px; padding: 22px 26px 0 26px; }
+        .sr-card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 18px; }
+        .sr-card span { display: block; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+        .sr-card b { display: block; font-size: 2rem; color: var(--navy-deep); line-height: 1.2; margin-top: 2px; }
+        .sr-table { padding: 22px 26px 26px 26px; }
+        .sr-table .table-wrap { min-width: 0; }
+        .sr-table th, .sr-table td { padding-top: 11px; padding-bottom: 11px; }
+        .sr-table .num { text-align: center; }
+        .sr-table tr.zero td { color: #9aa7c2; }
 
         @media (max-width: 1000px) {
             .controls, .controls .group { flex-wrap: wrap; }
@@ -244,11 +286,15 @@
         <select class="month-select" id="monthSelect" onchange="onMonthChange()"></select>
         <button class="btn" onclick="loadData()" id="refreshBtn">🔄 Refresh</button>
         <button class="btn green" onclick="openEntryModal()" id="addBtn">➕ Add Entry</button>
+        <button class="btn ghost small" onclick="openSummary()" id="summaryBtn">📊 Summary</button>
     </div>
     <div class="group">
         <button class="btn ghost" onclick="createNextMonth()" id="nextMonthBtn">📅 Create Next Month</button>
         <button class="btn ghost" onclick="toggleLock()" id="lockBtn">🔒 Editing locked</button>
-        <button class="btn" onclick="downloadImage()" id="downloadBtn">📸 Download as Image</button>
+        <div class="btn-split">
+            <button class="btn small" onclick="downloadImage()" id="downloadBtn">📸 Download</button>
+            <button class="btn small" onclick="copyImage()" id="copyBtn">📋 Copy</button>
+        </div>
         <button class="btn ghost close-btn" onclick="logout()" id="logoutBtn" title="Logout" aria-label="Logout">✕</button>
     </div>
 </div>
@@ -352,6 +398,48 @@
     </div>
 </div>
 
+<!-- Summary dashboard -->
+<div class="overlay" id="summaryOverlay">
+    <div class="modal wide">
+        <h2>Summary</h2>
+        <p class="sub">Total free video usage for a period</p>
+        <div class="field">
+            <label>From</label>
+            <div class="inline-row">
+                <select id="sStartYear" onchange="runSummary()"></select>
+                <select id="sStartMonth" onchange="runSummary()"></select>
+            </div>
+        </div>
+        <div class="field">
+            <label>To</label>
+            <div class="inline-row">
+                <select id="sEndYear" onchange="runSummary()"></select>
+                <select id="sEndMonth" onchange="runSummary()"></select>
+            </div>
+        </div>
+        <div class="modal-error" id="summaryError"></div>
+        <div class="summary-result">
+            <div class="summary-label">Total Free Videos</div>
+            <div class="summary-total" id="sumTotal">—</div>
+        </div>
+        <div class="summary-staff-wrap">
+            <table class="summary-staff">
+                <thead>
+                    <tr><th>Staff Name</th><th class="n">Total</th><th>Not Used Months</th><th class="n" style="width:44px"></th></tr>
+                </thead>
+                <tbody id="sumStaff"></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <div style="margin-right:auto; display:flex; gap:8px;">
+                <button class="btn small" id="sumDownloadBtn" onclick="downloadSummary()" disabled>📸 Download</button>
+                <button class="btn ghost small" id="sumRestoreBtn" onclick="restoreStaff()" style="display:none;">↺ Restore</button>
+            </div>
+            <button class="btn ghost" onclick="closeModals()">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Password / confirm modal (unlock / delete / create month / new staff) -->
 <div class="overlay" id="passOverlay">
     <div class="modal">
@@ -373,9 +461,17 @@
     </div>
 </div>
 
+<!-- Off-screen staff report (filled by JS, captured by the Summary Download button) -->
+<div id="summaryReport" aria-hidden="true"></div>
+
 <script>
     // Your Google Apps Script Web App URL (same URL after you redeploy as "New version")
     const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx_6yoi1pKdrNzjOJhgWHqnMfVruoW4YnKS4cloDy8frc9tt74eexRYWTDTqRXW5bE/exec';
+
+    // Staff who only started later. They are ignored for months before their start month.
+    // To add another one: 'Name': 'YYYY-MM'
+    const STAFF_START = { 'Kanmani': '2026-05' };
+    const staffActive = (name, monthKey) => !STAFF_START[name] || monthKey >= STAFF_START[name];
 
     let months = [];          // [{key,label}]
     let currentMonth = '';    // 'YYYY-MM'
@@ -546,10 +642,12 @@
         document.title = title;
 
         const entries = data.entries || [];
+        const mKey = data.month || currentMonth;
 
-        // Group entries by staff, keeping Staff-sheet order; unknown names go last
+        // Group entries by staff, keeping Staff-sheet order; unknown names go last.
+        // Staff who had not started yet in this month are skipped (unless they have an entry).
         const groups = new Map();
-        (data.staff || []).forEach(n => groups.set(n, []));
+        (data.staff || []).forEach(n => { if (staffActive(n, mKey)) groups.set(n, []); });
         entries.forEach(e => {
             if (!groups.has(e.staffName)) groups.set(e.staffName, []);
             groups.get(e.staffName).push(e);
@@ -614,6 +712,7 @@
     function closeModals() {
         $('entryOverlay').classList.remove('show');
         $('passOverlay').classList.remove('show');
+        $('summaryOverlay').classList.remove('show');
     }
 
     function showErr(id, msg) {
@@ -801,30 +900,214 @@
         }
     });
 
-    /* ---------- Download as image: header + stat cards + table, no buttons ---------- */
+    /* ---------- Summary dashboard ---------- */
 
-    async function downloadImage() {
-        const btn = $('downloadBtn');
-        const element = $('captureArea');
-        const label = (months.find(m => m.key === currentMonth) || {}).label || 'Month';
+    const MONTH_NAMES_JS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    let summaryReq = 0;
 
-        btn.disabled = true;
+    function openSummary() {
+        if (!months.length) return;
+        const years = [...new Set(months.map(m => m.key.slice(0, 4)))];
+        const yearOpts = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        const monthOpts = MONTH_NAMES_JS.map((n, i) =>
+            `<option value="${String(i + 1).padStart(2, '0')}">${n}</option>`).join('');
+
+        ['sStartYear', 'sEndYear'].forEach(id => $(id).innerHTML = yearOpts);
+        ['sStartMonth', 'sEndMonth'].forEach(id => $(id).innerHTML = monthOpts);
+
+        // Default: first available month -> currently selected month
+        const first = months[0].key;
+        const last = currentMonth || months[months.length - 1].key;
+        $('sStartYear').value = first.slice(0, 4);
+        $('sStartMonth').value = first.slice(5, 7);
+        $('sEndYear').value = last.slice(0, 4);
+        $('sEndMonth').value = last.slice(5, 7);
+
+        excludedStaff.clear();
+        $('summaryOverlay').classList.add('show');
+        runSummary();
+    }
+
+    let summaryData = null;
+    const excludedStaff = new Set();   // staff names removed with the small x button
+    const MONTH_SHORT = MONTH_NAMES_JS.map(n => n.slice(0, 3));
+
+    // Months of the selected period in which this staff member had no free video.
+    // Months before the staff member's start month (see STAFF_START) are not counted.
+    function notUsedText(s) {
+        const allKeys = (summaryData.months || []).map(m => m.key);
+        const elig = allKeys.filter(k => staffActive(s.name, k));
+        const multiYear = new Set(allKeys.map(k => k.slice(0, 4))).size > 1;
+        const used = new Set(s.usedMonths || []);
+        const missed = elig.filter(k => !used.has(k));
+        if (!missed.length) return '—';
+        if (elig.length > 1 && missed.length === elig.length) return 'All months';
+        return missed.map(k => MONTH_SHORT[parseInt(k.slice(5, 7), 10) - 1] + (multiYear ? ' ' + k.slice(0, 4) : '')).join(', ');
+    }
+
+    const fmtKey = k => MONTH_NAMES_JS[parseInt(k.slice(5, 7), 10) - 1] + ' ' + k.slice(0, 4);
+
+    function clearSummary() {
+        summaryData = null;
+        $('sumTotal').textContent = '—';
+        $('sumStaff').innerHTML = '';
+        $('sumDownloadBtn').disabled = true;
+        $('sumRestoreBtn').style.display = 'none';
+    }
+
+    // Re-draws total, staff table and hidden report from the loaded data, skipping removed staff
+    function refreshSummaryView() {
+        if (!summaryData) return;
+        const all = summaryData.staff || [];
+        // Hide removed staff, and staff who had not started yet in any month of the period (unless they have entries)
+        const rows = all.filter(s => !excludedStaff.has(s.name) &&
+            (s.total > 0 || (summaryData.months || []).some(m => staffActive(s.name, m.key))));
+        const total = rows.reduce((sum, s) => sum + s.total, 0);
+
+        $('sumTotal').textContent = total;
+        $('sumStaff').innerHTML = rows.length
+            ? rows.map(s => `<tr class="${s.total ? '' : 'zero'}">
+                    <td>${esc(s.name)}</td>
+                    <td class="n"><strong>${s.total}</strong></td>
+                    <td class="nu">${esc(notUsedText(s))}</td>
+                    <td class="n"><button class="x-btn" title="Remove from report" onclick="removeStaff(${all.indexOf(s)})">✕</button></td>
+                </tr>`).join('')
+            : '<tr><td colspan="4" class="empty-state">No staff selected</td></tr>';
+
+        const removed = excludedStaff.size;
+        $('sumRestoreBtn').style.display = removed ? '' : 'none';
+        $('sumRestoreBtn').textContent = '↺ Restore (' + removed + ')';
+
+        buildSummaryReport(rows, total);
+        $('sumDownloadBtn').disabled = false;
+    }
+
+    function removeStaff(index) {
+        const s = summaryData && summaryData.staff[index];
+        if (!s) return;
+        excludedStaff.add(s.name);
+        refreshSummaryView();
+    }
+
+    function restoreStaff() {
+        excludedStaff.clear();
+        refreshSummaryView();
+    }
+
+    // Builds the (hidden) report that the Download button turns into an image
+    function buildSummaryReport(rows, total) {
+        const r = summaryData;
+        const period = r.start === r.end ? fmtKey(r.start) : fmtKey(r.start) + ' — ' + fmtKey(r.end);
+
+        const body = rows.map((s, i) => `<tr class="${i % 2 ? 'alt ' : ''}${s.total ? '' : 'zero'}">
+                <td class="staff-badge">${esc(s.name)}</td>
+                <td class="num"><strong>${s.total}</strong></td>
+                <td class="nu">${esc(notUsedText(s))}</td>
+            </tr>`).join('');
+
+        $('summaryReport').innerHTML = `
+            <div class="sr-head"><h3>Free Video — Staff Report</h3><p>${esc(period)}</p></div>
+            <div class="sr-stats">
+                <div class="sr-card"><span>Total Videos</span><b>${total}</b></div>
+            </div>
+            <div class="sr-table">
+                <div class="table-wrap">
+                    <table>
+                        <thead><tr>
+                            <th>Staff Name</th>
+                            <th style="text-align:center;width:16%">Total</th>
+                            <th style="width:50%">Not Used Months</th>
+                        </tr></thead>
+                        <tbody>${body}</tbody>
+                    </table>
+                </div>
+            </div>`;
+    }
+
+    async function runSummary() {
+        const start = $('sStartYear').value + '-' + $('sStartMonth').value;
+        const end = $('sEndYear').value + '-' + $('sEndMonth').value;
+        showErr('summaryError', '');
+
+        if (start > end) {
+            summaryReq++;
+            clearSummary();
+            return showErr('summaryError', 'Start month must be before or equal to end month');
+        }
+
+        const myReq = ++summaryReq;
+        clearSummary();
+        $('sumTotal').textContent = '...';
+        try {
+            const r = await apiRead('summary', { start, end });
+            if (myReq !== summaryReq) return;     // a newer selection was made
+            summaryData = r;
+            refreshSummaryView();
+        } catch (err) {
+            if (myReq !== summaryReq) return;
+            clearSummary();
+            showErr('summaryError', err.message);
+        }
+    }
+
+    async function downloadSummary() {
+        if (!summaryData) return;
+        const btn = $('sumDownloadBtn');
         const oldText = btn.textContent;
-        btn.textContent = '⏳ Preparing...';
+        btn.disabled = true;
+        btn.textContent = '⏳ ...';
         try {
             if (document.fonts && document.fonts.ready) await document.fonts.ready;
-            const canvas = await html2canvas(element, {
+            const canvas = await html2canvas($('summaryReport'), {
                 scale: 2,
                 backgroundColor: '#f6f9fe',
                 windowWidth: 1200,
                 onclone: doc => {
-                    doc.querySelectorAll('.no-capture').forEach(el => el.style.display = 'none');
-                    const c = doc.getElementById('captureArea');
-                    c.style.width = '1100px';
-                    c.style.maxWidth = 'none';
-                    c.style.border = 'none';
+                    doc.querySelectorAll('.overlay').forEach(o => o.style.display = 'none');
+                    const el = doc.getElementById('summaryReport');
+                    el.style.left = '0';
+                    el.style.top = '0';
+                    el.style.zIndex = '1000';
                 }
             });
+            const link = document.createElement('a');
+            link.download = 'Free-Video-Staff-Report-' + summaryData.start + '_to_' + summaryData.end + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } catch (err) {
+            alert('Could not create the image: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = oldText;
+        }
+    }
+
+    /* ---------- Download / Copy as image: header + stat cards + table, no buttons ---------- */
+
+    async function captureCanvas() {
+        if (document.fonts && document.fonts.ready) await document.fonts.ready;
+        return html2canvas($('captureArea'), {
+            scale: 2,
+            backgroundColor: '#f6f9fe',
+            windowWidth: 1200,
+            onclone: doc => {
+                doc.querySelectorAll('.no-capture').forEach(el => el.style.display = 'none');
+                const c = doc.getElementById('captureArea');
+                c.style.width = '1100px';
+                c.style.maxWidth = 'none';
+                c.style.border = 'none';
+            }
+        });
+    }
+
+    async function downloadImage() {
+        const btn = $('downloadBtn');
+        const label = (months.find(m => m.key === currentMonth) || {}).label || 'Month';
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = '⏳ ...';
+        try {
+            const canvas = await captureCanvas();
             const link = document.createElement('a');
             link.download = 'Free-Video-' + label.replace(/\s+/g, '-') + '.png';
             link.href = canvas.toDataURL('image/png');
@@ -834,6 +1117,27 @@
         } finally {
             btn.disabled = false;
             btn.textContent = oldText;
+        }
+    }
+
+    async function copyImage() {
+        const btn = $('copyBtn');
+        if (!navigator.clipboard || !window.ClipboardItem) {
+            return alert('Copy is not supported in this browser (it needs https). Use Download instead.');
+        }
+        btn.disabled = true;
+        const oldText = btn.textContent;
+        btn.textContent = '⏳ ...';
+        try {
+            // Passing a promise keeps this working in Safari too
+            const blobPromise = captureCanvas().then(c => new Promise(res => c.toBlob(res, 'image/png')));
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
+            btn.textContent = '✅ Copied';
+            setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 1500);
+        } catch (err) {
+            alert('Could not copy the image: ' + err.message);
+            btn.textContent = oldText;
+            btn.disabled = false;
         }
     }
 
