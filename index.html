@@ -248,7 +248,8 @@
         .summary-staff tr.zero td { color: #9aa7c2; }
         .summary-staff td.nu { font-size: 0.78rem; color: var(--text-muted); }
         .sr-table td.nu { font-size: 0.9rem; color: var(--text-muted); }
-        .x-btn { border: none; background: #fdecef; color: var(--danger); border-radius: 50%; width: 20px; height: 20px; padding: 0; font-size: 0.65rem; line-height: 1; cursor: pointer; }
+        .th-flex { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .x-btn { border: none; background: #fdecef; color: var(--danger); border-radius: 50%; width: 20px; height: 20px; padding: 0; font-size: 0.65rem; line-height: 1; cursor: pointer; flex: 0 0 20px; }
         .x-btn:hover { background: var(--danger); color: white; }
 
         /* Off-screen report that gets downloaded from the Summary dashboard */
@@ -380,8 +381,12 @@
             <input id="fName" type="text">
         </div>
         <div class="field">
-            <label>Service Date</label>
-            <input id="fDate" type="date">
+            <label>Service Date (Date / Month / Year)</label>
+            <div class="inline-row">
+                <select id="fDay" aria-label="Day"></select>
+                <select id="fMonth" aria-label="Month"></select>
+                <select id="fYear" aria-label="Year"></select>
+            </div>
         </div>
         <div class="field">
             <label>Status</label>
@@ -424,16 +429,14 @@
         </div>
         <div class="summary-staff-wrap">
             <table class="summary-staff">
-                <thead>
-                    <tr><th>Staff Name</th><th class="n">Total</th><th>Not Used Months</th><th class="n" style="width:44px"></th></tr>
-                </thead>
+                <thead id="sumHead"></thead>
                 <tbody id="sumStaff"></tbody>
             </table>
         </div>
         <div class="modal-actions">
             <div style="margin-right:auto; display:flex; gap:8px;">
                 <button class="btn small" id="sumDownloadBtn" onclick="downloadSummary()" disabled>📸 Download</button>
-                <button class="btn ghost small" id="sumRestoreBtn" onclick="restoreStaff()" style="display:none;">↺ Restore</button>
+                <button class="btn ghost small" id="sumRestoreBtn" onclick="restoreNotUsed()" style="display:none;">↺ Show Not Used Months</button>
             </div>
             <button class="btn ghost" onclick="closeModals()">Close</button>
         </div>
@@ -480,6 +483,57 @@
     let passAction = null;    // function(password) for the password-only modal
 
     const $ = id => document.getElementById(id);
+
+    const MONTH_NAMES_JS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const MONTH_SHORT = MONTH_NAMES_JS.map(n => n.slice(0, 3));
+
+    /* ---------- Date helpers: shown as "10 Nov 2026", stored as YYYY-MM-DD ---------- */
+
+    function formatDate(s) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s == null ? '' : s));
+        if (!m) return String(s == null ? '' : s);
+        return parseInt(m[3], 10) + ' ' + MONTH_SHORT[parseInt(m[2], 10) - 1] + ' ' + m[1];
+    }
+
+    function initDateSelects() {
+        $('fDay').innerHTML = Array.from({ length: 31 }, (_, i) =>
+            `<option value="${String(i + 1).padStart(2, '0')}">${i + 1}</option>`).join('');
+        $('fMonth').innerHTML = MONTH_SHORT.map((n, i) =>
+            `<option value="${String(i + 1).padStart(2, '0')}">${n}</option>`).join('');
+        const y = new Date().getFullYear();
+        setYearOptions(y - 3, y + 3);
+    }
+
+    function setYearOptions(from, to) {
+        let html = '';
+        for (let y = from; y <= to; y++) html += `<option value="${y}">${y}</option>`;
+        $('fYear').innerHTML = html;
+    }
+
+    // iso = 'YYYY-MM-DD'
+    function setDateFields(iso) {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+        const d = m ? { y: m[1], m: m[2], d: m[3] } : (() => {
+            const t = new Date();
+            return { y: String(t.getFullYear()), m: String(t.getMonth() + 1).padStart(2, '0'), d: String(t.getDate()).padStart(2, '0') };
+        })();
+        const yr = parseInt(d.y, 10);
+        const cur = new Date().getFullYear();
+        setYearOptions(Math.min(cur - 3, yr), Math.max(cur + 3, yr));
+        $('fDay').value = d.d;
+        $('fMonth').value = d.m;
+        $('fYear').value = d.y;
+    }
+
+    // Returns 'YYYY-MM-DD', or '' if the date does not exist (e.g. 31 Feb)
+    function getDateFields() {
+        const y = parseInt($('fYear').value, 10);
+        const m = parseInt($('fMonth').value, 10);
+        const d = parseInt($('fDay').value, 10);
+        const dt = new Date(y, m - 1, d);
+        if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return '';
+        return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
 
     /* ---------- Two passwords, each asked once per computer ----------
        Password 1 (view)  : needed to open the page
@@ -692,7 +746,7 @@
                         <td class="staff-badge">${i === 0 ? esc(staffName) : ''}</td>
                         <td>${e.ticketId ? `<span class="ticket-no">#${esc(e.ticketId)}</span>` : ''}</td>
                         <td>${esc(e.decedentName)}</td>
-                        <td>${esc(e.date)}</td>
+                        <td style="white-space:nowrap">${esc(formatDate(e.date))}</td>
                         <td><span class="status-pill ${st === 'Done' ? 'done' : 'pending'}">${st}</span></td>
                         <td class="actions no-capture">
                             <button class="icon-btn" onclick="openEntryModal(${e.row})">Edit</button>
@@ -744,14 +798,14 @@
             fillStaffSelect(e.staffName);
             $('fTicket').value = e.ticketId;
             $('fName').value = e.decedentName;
-            $('fDate').value = e.date;
+            setDateFields(e.date);
             $('fStatus').value = e.status === 'Done' ? 'Done' : 'Pending';
         } else {
             $('entryTitle').textContent = 'Add Entry';
             fillStaffSelect();
             $('fTicket').value = '';
             $('fName').value = '';
-            $('fDate').value = new Date().toISOString().slice(0, 10);
+            setDateFields(new Date().toISOString().slice(0, 10));
             $('fStatus').value = 'Pending';
         }
         const m = months.find(x => x.key === currentMonth);
@@ -770,13 +824,13 @@
             staffName: $('fStaff').value,
             ticketId: $('fTicket').value.trim(),
             decedentName: $('fName').value.trim(),
-            date: $('fDate').value,
+            date: getDateFields(),
             status: $('fStatus').value
         };
         if (!payload.editPassword) { closeModals(); return openEditUnlock(() => openEntryForm(editingRow)); }
         if (!payload.staffName) return showErr('entryError', 'Select a staff name');
         if (!payload.ticketId) return showErr('entryError', 'Ticket ID is required');
-        if (!payload.date) return showErr('entryError', 'Service date is required');
+        if (!payload.date) return showErr('entryError', 'Select a valid service date');
 
         btn.disabled = true; btn.textContent = 'Saving...';
         showErr('entryError', '');
@@ -902,8 +956,9 @@
 
     /* ---------- Summary dashboard ---------- */
 
-    const MONTH_NAMES_JS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     let summaryReq = 0;
+    let summaryData = null;
+    let hideNotUsed = false;   // true after the x on the "Not Used Months" column is clicked
 
     function openSummary() {
         if (!months.length) return;
@@ -923,14 +978,10 @@
         $('sEndYear').value = last.slice(0, 4);
         $('sEndMonth').value = last.slice(5, 7);
 
-        excludedStaff.clear();
+        hideNotUsed = false;
         $('summaryOverlay').classList.add('show');
         runSummary();
     }
-
-    let summaryData = null;
-    const excludedStaff = new Set();   // staff names removed with the small x button
-    const MONTH_SHORT = MONTH_NAMES_JS.map(n => n.slice(0, 3));
 
     // Months of the selected period in which this staff member had no free video.
     // Months before the staff member's start month (see STAFF_START) are not counted.
@@ -950,47 +1001,51 @@
     function clearSummary() {
         summaryData = null;
         $('sumTotal').textContent = '—';
+        $('sumHead').innerHTML = '';
         $('sumStaff').innerHTML = '';
         $('sumDownloadBtn').disabled = true;
         $('sumRestoreBtn').style.display = 'none';
     }
 
-    // Re-draws total, staff table and hidden report from the loaded data, skipping removed staff
+    // Re-draws total, staff table and hidden report from the loaded data
     function refreshSummaryView() {
         if (!summaryData) return;
         const all = summaryData.staff || [];
-        // Hide removed staff, and staff who had not started yet in any month of the period (unless they have entries)
-        const rows = all.filter(s => !excludedStaff.has(s.name) &&
-            (s.total > 0 || (summaryData.months || []).some(m => staffActive(s.name, m.key))));
+        // Hide staff who had not started yet in any month of the period (unless they have entries)
+        const rows = all.filter(s =>
+            s.total > 0 || (summaryData.months || []).some(m => staffActive(s.name, m.key)));
         const total = rows.reduce((sum, s) => sum + s.total, 0);
+        const cols = hideNotUsed ? 2 : 3;
 
         $('sumTotal').textContent = total;
+
+        $('sumHead').innerHTML = `<tr>
+            <th>Staff Name</th>
+            <th class="n">Total</th>
+            ${hideNotUsed ? '' : `<th><div class="th-flex"><span>Not Used Months</span><button class="x-btn" title="Remove this column" onclick="removeNotUsed()">✕</button></div></th>`}
+        </tr>`;
+
         $('sumStaff').innerHTML = rows.length
             ? rows.map(s => `<tr class="${s.total ? '' : 'zero'}">
                     <td>${esc(s.name)}</td>
                     <td class="n"><strong>${s.total}</strong></td>
-                    <td class="nu">${esc(notUsedText(s))}</td>
-                    <td class="n"><button class="x-btn" title="Remove from report" onclick="removeStaff(${all.indexOf(s)})">✕</button></td>
+                    ${hideNotUsed ? '' : `<td class="nu">${esc(notUsedText(s))}</td>`}
                 </tr>`).join('')
-            : '<tr><td colspan="4" class="empty-state">No staff selected</td></tr>';
+            : `<tr><td colspan="${cols}" class="empty-state">No staff selected</td></tr>`;
 
-        const removed = excludedStaff.size;
-        $('sumRestoreBtn').style.display = removed ? '' : 'none';
-        $('sumRestoreBtn').textContent = '↺ Restore (' + removed + ')';
+        $('sumRestoreBtn').style.display = hideNotUsed ? '' : 'none';
 
         buildSummaryReport(rows, total);
         $('sumDownloadBtn').disabled = false;
     }
 
-    function removeStaff(index) {
-        const s = summaryData && summaryData.staff[index];
-        if (!s) return;
-        excludedStaff.add(s.name);
+    function removeNotUsed() {
+        hideNotUsed = true;
         refreshSummaryView();
     }
 
-    function restoreStaff() {
-        excludedStaff.clear();
+    function restoreNotUsed() {
+        hideNotUsed = false;
         refreshSummaryView();
     }
 
@@ -1002,7 +1057,7 @@
         const body = rows.map((s, i) => `<tr class="${i % 2 ? 'alt ' : ''}${s.total ? '' : 'zero'}">
                 <td class="staff-badge">${esc(s.name)}</td>
                 <td class="num"><strong>${s.total}</strong></td>
-                <td class="nu">${esc(notUsedText(s))}</td>
+                ${hideNotUsed ? '' : `<td class="nu">${esc(notUsedText(s))}</td>`}
             </tr>`).join('');
 
         $('summaryReport').innerHTML = `
@@ -1015,8 +1070,8 @@
                     <table>
                         <thead><tr>
                             <th>Staff Name</th>
-                            <th style="text-align:center;width:16%">Total</th>
-                            <th style="width:50%">Not Used Months</th>
+                            <th style="text-align:center;width:${hideNotUsed ? '30%' : '16%'}">Total</th>
+                            ${hideNotUsed ? '' : '<th style="width:50%">Not Used Months</th>'}
                         </tr></thead>
                         <tbody>${body}</tbody>
                     </table>
@@ -1154,6 +1209,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
+        initDateSelects();
         updateLockUI();
         // Password 1 is asked once per computer; the page stays hidden until then
         if (!getViewPw()) showLogin();
