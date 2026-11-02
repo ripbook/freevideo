@@ -238,19 +238,17 @@
         .summary-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
         .summary-total { font-size: 2.4rem; font-weight: 700; color: var(--navy-deep); line-height: 1.1; margin-top: 2px; }
 
-
-        .modal.wide { max-width: 520px; }
-        .summary-staff-wrap { max-height: 230px; overflow-y: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; }
+        .modal.wide { max-width: 940px; }
+        .summary-staff-wrap { max-height: 340px; overflow: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: 8px; }
         .summary-staff { width: 100%; border-collapse: collapse; }
-        .summary-staff th { position: sticky; top: 0; padding: 8px 12px; font-size: 0.7rem; }
-        .summary-staff td { padding: 7px 12px; font-size: 0.85rem; }
-        .summary-staff th.n, .summary-staff td.n { text-align: center; width: 70px; }
-        .summary-staff tr.zero td { color: #9aa7c2; }
-        .summary-staff td.nu { font-size: 0.78rem; color: var(--text-muted); }
-        .sr-table td.nu { font-size: 0.9rem; color: var(--text-muted); }
-        .th-flex { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-        .x-btn { border: none; background: #fdecef; color: var(--danger); border-radius: 50%; width: 20px; height: 20px; padding: 0; font-size: 0.65rem; line-height: 1; cursor: pointer; flex: 0 0 20px; }
-        .x-btn:hover { background: var(--danger); color: white; }
+        .summary-staff th { position: sticky; top: 0; padding: 8px 10px; font-size: 0.7rem; white-space: nowrap; z-index: 2; }
+        .summary-staff td { padding: 7px 10px; font-size: 0.85rem; white-space: nowrap; }
+        .summary-staff th.n, .summary-staff td.n { text-align: center; min-width: 46px; }
+        .summary-staff th.tot, .summary-staff td.tot { text-align: center; min-width: 64px; }
+        .summary-staff td.tot { font-weight: 700; color: var(--navy-deep); background: var(--accent-soft); }
+        .summary-staff th:first-child, .summary-staff td:first-child { position: sticky; left: 0; z-index: 1; }
+        .summary-staff th:first-child { z-index: 3; }
+        .summary-staff td.dim, .sr-table td.dim { color: #9aa7c2; }
 
         /* Off-screen report that gets downloaded from the Summary dashboard */
         #summaryReport { position: absolute; left: -10000px; top: 0; width: 760px; background: #f6f9fe; font-family: 'Inter', 'Noto Sans Tamil', sans-serif; color: var(--text-main); }
@@ -263,9 +261,10 @@
         .sr-card b { display: block; font-size: 2rem; color: var(--navy-deep); line-height: 1.2; margin-top: 2px; }
         .sr-table { padding: 22px 26px 26px 26px; }
         .sr-table .table-wrap { min-width: 0; }
-        .sr-table th, .sr-table td { padding-top: 11px; padding-bottom: 11px; }
-        .sr-table .num { text-align: center; }
-        .sr-table tr.zero td { color: #9aa7c2; }
+        .sr-table th, .sr-table td { padding: 11px 10px; }
+        .sr-table th:first-child, .sr-table td:first-child { padding-left: 20px; }
+        .sr-table th.num, .sr-table td.num { text-align: center; }
+        .sr-table td.tot { font-weight: 700; color: var(--navy-deep); }
 
         @media (max-width: 1000px) {
             .controls, .controls .group { flex-wrap: wrap; }
@@ -277,6 +276,7 @@
             header { padding: 22px 20px 26px 20px; }
             header h1 { font-size: 1.5rem; }
             td, th { padding-left: 14px; padding-right: 14px; }
+            .summary-staff th, .summary-staff td { padding-left: 8px; padding-right: 8px; }
         }
     </style>
 </head>
@@ -407,7 +407,7 @@
 <div class="overlay" id="summaryOverlay">
     <div class="modal wide">
         <h2>Summary</h2>
-        <p class="sub">Total free video usage for a period</p>
+        <p class="sub">Free video usage per staff, month by month</p>
         <div class="field">
             <label>From</label>
             <div class="inline-row">
@@ -436,7 +436,6 @@
         <div class="modal-actions">
             <div style="margin-right:auto; display:flex; gap:8px;">
                 <button class="btn small" id="sumDownloadBtn" onclick="downloadSummary()" disabled>📸 Download</button>
-                <button class="btn ghost small" id="sumRestoreBtn" onclick="restoreNotUsed()" style="display:none;">↺ Show Not Used Months</button>
             </div>
             <button class="btn ghost" onclick="closeModals()">Close</button>
         </div>
@@ -954,14 +953,16 @@
         }
     });
 
-    /* ---------- Summary dashboard ---------- */
+    /* ---------- Summary dashboard: staff x month grid + total ---------- */
 
     let summaryReq = 0;
     let summaryData = null;
-    let hideNotUsed = false;   // true after the x on the "Not Used Months" column is clicked
+    const monthCache = {};      // 'YYYY-MM' -> month data, cleared each time Summary is opened
 
     function openSummary() {
         if (!months.length) return;
+        Object.keys(monthCache).forEach(k => delete monthCache[k]);
+
         const years = [...new Set(months.map(m => m.key.slice(0, 4)))];
         const yearOpts = years.map(y => `<option value="${y}">${y}</option>`).join('');
         const monthOpts = MONTH_NAMES_JS.map((n, i) =>
@@ -970,30 +971,19 @@
         ['sStartYear', 'sEndYear'].forEach(id => $(id).innerHTML = yearOpts);
         ['sStartMonth', 'sEndMonth'].forEach(id => $(id).innerHTML = monthOpts);
 
-        // Default: first available month -> currently selected month
+        // Default: first available month -> current month (until now)
+        const now = new Date();
+        const nowKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        const upToNow = months.filter(m => m.key <= nowKey);
         const first = months[0].key;
-        const last = currentMonth || months[months.length - 1].key;
+        const last = upToNow.length ? upToNow[upToNow.length - 1].key : months[months.length - 1].key;
         $('sStartYear').value = first.slice(0, 4);
         $('sStartMonth').value = first.slice(5, 7);
         $('sEndYear').value = last.slice(0, 4);
         $('sEndMonth').value = last.slice(5, 7);
 
-        hideNotUsed = false;
         $('summaryOverlay').classList.add('show');
         runSummary();
-    }
-
-    // Months of the selected period in which this staff member had no free video.
-    // Months before the staff member's start month (see STAFF_START) are not counted.
-    function notUsedText(s) {
-        const allKeys = (summaryData.months || []).map(m => m.key);
-        const elig = allKeys.filter(k => staffActive(s.name, k));
-        const multiYear = new Set(allKeys.map(k => k.slice(0, 4))).size > 1;
-        const used = new Set(s.usedMonths || []);
-        const missed = elig.filter(k => !used.has(k));
-        if (!missed.length) return '—';
-        if (elig.length > 1 && missed.length === elig.length) return 'All months';
-        return missed.map(k => MONTH_SHORT[parseInt(k.slice(5, 7), 10) - 1] + (multiYear ? ' ' + k.slice(0, 4) : '')).join(', ');
     }
 
     const fmtKey = k => MONTH_NAMES_JS[parseInt(k.slice(5, 7), 10) - 1] + ' ' + k.slice(0, 4);
@@ -1004,61 +994,84 @@
         $('sumHead').innerHTML = '';
         $('sumStaff').innerHTML = '';
         $('sumDownloadBtn').disabled = true;
-        $('sumRestoreBtn').style.display = 'none';
     }
 
-    // Re-draws total, staff table and hidden report from the loaded data
+    // Short column label: "Jan" (or "Jan '26" when the period spans several years)
+    function monthColLabel(k, multiYear) {
+        return MONTH_SHORT[parseInt(k.slice(5, 7), 10) - 1] + (multiYear ? " '" + k.slice(2, 4) : '');
+    }
+
+    // Counts free videos per staff per month from the monthly sheets
+    function buildSummaryData(keys, results, start, end) {
+        const map = new Map();
+        const get = n => {
+            if (!map.has(n)) map.set(n, { name: n, counts: {}, total: 0 });
+            return map.get(n);
+        };
+        results.forEach((data, i) => {
+            const k = keys[i];
+            (data.staff || []).forEach(n => { if (staffActive(n, k)) get(n); });
+            (data.entries || []).forEach(e => {
+                if (!e.ticketId) return;
+                const s = get(e.staffName);
+                s.counts[k] = (s.counts[k] || 0) + 1;
+                s.total++;
+            });
+        });
+        // Sort staff by total free videos: high → low (ties keep their original order)
+        const staff = Array.from(map.values()).sort((a, b) => b.total - a.total);
+        return { start, end, keys, staff };
+    }
+
+    // Re-draws total, staff x month table and hidden report from the loaded data
     function refreshSummaryView() {
         if (!summaryData) return;
-        const all = summaryData.staff || [];
-        // Hide staff who had not started yet in any month of the period (unless they have entries)
-        const rows = all.filter(s =>
-            s.total > 0 || (summaryData.months || []).some(m => staffActive(s.name, m.key)));
+        const rows = summaryData.staff;
+        const keys = summaryData.keys;
+        const multiYear = new Set(keys.map(k => k.slice(0, 4))).size > 1;
         const total = rows.reduce((sum, s) => sum + s.total, 0);
-        const cols = hideNotUsed ? 2 : 3;
 
         $('sumTotal').textContent = total;
 
         $('sumHead').innerHTML = `<tr>
             <th>Staff Name</th>
-            <th class="n">Total</th>
-            ${hideNotUsed ? '' : `<th><div class="th-flex"><span>Not Used Months</span><button class="x-btn" title="Remove this column" onclick="removeNotUsed()">✕</button></div></th>`}
+            ${keys.map(k => `<th class="n">${esc(monthColLabel(k, multiYear))}</th>`).join('')}
+            <th class="tot">Total</th>
         </tr>`;
 
         $('sumStaff').innerHTML = rows.length
-            ? rows.map(s => `<tr class="${s.total ? '' : 'zero'}">
-                    <td>${esc(s.name)}</td>
-                    <td class="n"><strong>${s.total}</strong></td>
-                    ${hideNotUsed ? '' : `<td class="nu">${esc(notUsedText(s))}</td>`}
+            ? rows.map(s => `<tr>
+                    <td class="staff-badge">${esc(s.name)}</td>
+                    ${keys.map(k => {
+                        if (!staffActive(s.name, k) && !s.counts[k]) return '<td class="n dim">–</td>';
+                        const c = s.counts[k] || 0;
+                        return `<td class="n${c ? '' : ' dim'}">${c}</td>`;
+                    }).join('')}
+                    <td class="tot">${s.total}</td>
                 </tr>`).join('')
-            : `<tr><td colspan="${cols}" class="empty-state">No staff selected</td></tr>`;
+            : `<tr><td colspan="${keys.length + 2}" class="empty-state">No staff found</td></tr>`;
 
-        $('sumRestoreBtn').style.display = hideNotUsed ? '' : 'none';
-
-        buildSummaryReport(rows, total);
+        buildSummaryReport(rows, total, keys, multiYear);
         $('sumDownloadBtn').disabled = false;
     }
 
-    function removeNotUsed() {
-        hideNotUsed = true;
-        refreshSummaryView();
-    }
-
-    function restoreNotUsed() {
-        hideNotUsed = false;
-        refreshSummaryView();
-    }
-
     // Builds the (hidden) report that the Download button turns into an image
-    function buildSummaryReport(rows, total) {
+    function buildSummaryReport(rows, total, keys, multiYear) {
         const r = summaryData;
         const period = r.start === r.end ? fmtKey(r.start) : fmtKey(r.start) + ' — ' + fmtKey(r.end);
 
-        const body = rows.map((s, i) => `<tr class="${i % 2 ? 'alt ' : ''}${s.total ? '' : 'zero'}">
+        const body = rows.map((s, i) => `<tr class="${i % 2 ? 'alt' : ''}">
                 <td class="staff-badge">${esc(s.name)}</td>
-                <td class="num"><strong>${s.total}</strong></td>
-                ${hideNotUsed ? '' : `<td class="nu">${esc(notUsedText(s))}</td>`}
+                ${keys.map(k => {
+                    if (!staffActive(s.name, k) && !s.counts[k]) return '<td class="num dim">–</td>';
+                    const c = s.counts[k] || 0;
+                    return `<td class="num${c ? '' : ' dim'}">${c}</td>`;
+                }).join('')}
+                <td class="num tot">${s.total}</td>
             </tr>`).join('');
+
+        // Report gets wider as more months are shown
+        $('summaryReport').style.width = Math.max(760, 220 + keys.length * (multiYear ? 74 : 64) + 100) + 'px';
 
         $('summaryReport').innerHTML = `
             <div class="sr-head"><h3>Free Video — Staff Report</h3><p>${esc(period)}</p></div>
@@ -1070,8 +1083,8 @@
                     <table>
                         <thead><tr>
                             <th>Staff Name</th>
-                            <th style="text-align:center;width:${hideNotUsed ? '30%' : '16%'}">Total</th>
-                            ${hideNotUsed ? '' : '<th style="width:50%">Not Used Months</th>'}
+                            ${keys.map(k => `<th class="num">${esc(monthColLabel(k, multiYear))}</th>`).join('')}
+                            <th class="num">Total</th>
                         </tr></thead>
                         <tbody>${body}</tbody>
                     </table>
@@ -1090,13 +1103,23 @@
             return showErr('summaryError', 'Start month must be before or equal to end month');
         }
 
+        const keys = months.map(m => m.key).filter(k => k >= start && k <= end);
+        if (!keys.length) {
+            summaryReq++;
+            clearSummary();
+            return showErr('summaryError', 'No month sheets found in this period');
+        }
+
         const myReq = ++summaryReq;
         clearSummary();
         $('sumTotal').textContent = '...';
         try {
-            const r = await apiRead('summary', { start, end });
+            const results = await Promise.all(keys.map(async k => {
+                if (!monthCache[k]) monthCache[k] = await apiRead('data', { month: k });
+                return monthCache[k];
+            }));
             if (myReq !== summaryReq) return;     // a newer selection was made
-            summaryData = r;
+            summaryData = buildSummaryData(keys, results, start, end);
             refreshSummaryView();
         } catch (err) {
             if (myReq !== summaryReq) return;
@@ -1113,10 +1136,12 @@
         btn.textContent = '⏳ ...';
         try {
             if (document.fonts && document.fonts.ready) await document.fonts.ready;
-            const canvas = await html2canvas($('summaryReport'), {
+            const reportEl = $('summaryReport');
+            const w = parseInt(reportEl.style.width, 10) || 760;
+            const canvas = await html2canvas(reportEl, {
                 scale: 2,
                 backgroundColor: '#f6f9fe',
-                windowWidth: 1200,
+                windowWidth: Math.max(1200, w + 40),
                 onclone: doc => {
                     doc.querySelectorAll('.overlay').forEach(o => o.style.display = 'none');
                     const el = doc.getElementById('summaryReport');
